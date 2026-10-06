@@ -28,15 +28,19 @@ class Checker:
         self.row = r2
         self.col = c2
 
+    def get_color(self):
+        return self.color
+
 
 class Board:
     def __init__(self, type):
         self.type = type.lower()
         self.status = "Ongoing"
-        checkers = []
+        self.checkers = []
+        self.removed = []
         self.size_row = 0
         self.size_col = 0
-        self.board_refill(self)
+        self.board_refill()
 
     def board_refill(self):
         if self.type == "small":
@@ -46,9 +50,9 @@ class Board:
         for i in range(self.size_row):
             for j in range(self.size_col):
                 if (i%2==0 and j%2!=0) or (i%2!=0 and j%2==0):
-                    if i < self.size_row/2-1:
+                    if i < self.size_row//2-1:
                         self.checkers.append(Checker(i, j, "black"))
-                    elif i > self.size_row/2:
+                    elif i > self.size_row//2:
                         self.checkers.append(Checker(i, j, "white"))
 
     def finish(self):
@@ -61,17 +65,23 @@ class Board:
                 return chkr
         return None
 
-    def check_move(self, r1, c1, r2, c2):
-        return True###checking logic
+    def check_move(self, r1, c1, r2, c2, color):
+        chkr1 = self.find_checker(r1+(r2-r1)//2, c1+(c2-c1)//2)
+        chkr2 = self.find_checker(r2, c2)
+        if chkr1==None or (chkr1!=None and chkr2==None and chkr1.get_color()!=color): 
+            return True
+        return False
 
     def remove(self, r1, c1, r2, c2):
-        chkr = self.find_checker(r1+(r2-r1)/2, c1+(c2-c1)/2)
-        chkr.remove()###removal logic
+        chkr = self.find_checker(r1+(r2-r1)//2, c1+(c2-c1)//2)
+        chkr.remove()
+        self.removed.append(chkr)
+        self.checkers.remove(chkr)
 
     def move(self, r1, c1, r2, c2):
         chkr = self.find_checker(r1, c1)
         if chkr == None: return "Checker not found"
-        if self.check_move(r1, c1, r2, c2):
+        if self.check_move(r1, c1, r2, c2, chkr.get_color()):
             self.remove(r1, c1, r2, c2)
             chkr.move(r2, c2)
             return "Success"
