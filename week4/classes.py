@@ -1,3 +1,5 @@
+import time
+
 class Checker:
     def __init__(self, row, col, color):
         self.row = row
@@ -24,7 +26,7 @@ class Checker:
 
 class Board:
     def __init__(self, board_type):
-        self.board_type = board_type.lower()
+        self.board_type = board_type
         self.status = None
         self.checkers = None
         self.removed = None
@@ -89,10 +91,24 @@ class Board:
 
     def finish(self):
         self.status = "finished"
+        print(f"Game {self.status}!\nTotal checkers still present: {len(self.checkers)}\nTotal checkers eliminated: {len(self.removed)}")
 
     def show(self):
-        return 0 
-
+        out = ""
+        print("State of the board:")
+        out += "#"
+        for k in range(self.size_col): out += f"{k}"
+        for i in range(self.size_row):
+            out += f"\n{i}"
+            for j in range(self.size_col):
+                ch = self.find_checker(i, j)
+                if ch is not None:
+                    cr = ch.get_color()
+                    if cr == "white": out += "W"
+                    else: out += "B"
+                else: out += "–"
+        print(out)
+                
 
 class Player:
     def __init__(self, name, color):
@@ -103,8 +119,17 @@ class Player:
         self.timer = 0
         self.points = 0
 
-    def set_result(self, result):
-        self.result = result
+    def define_result(self, pts, tmr):
+        if self.points > pts:
+            self.result = "won"
+        elif self.points < pts:
+            self.result = "lost"
+        elif tmr > self.timer:
+            self.result = "won"
+        elif tmr < self.timer:
+            self.result = "lost"
+        else: self.result = "draw"
+        return self.result
 
     def increase_time(self, spent):
         self.timer += spent
@@ -121,6 +146,12 @@ class Player:
     def get_name(self):
         return self.name
 
+    def print_data(self):
+        print(f"Your color: {self.color}\nYour points: {self.points}\nTime spent: {self.timer:.1f}s\nMoves made: {self.move_num}")
+
+    def get_pNt(self):
+        return self.points, self.timer
+
 
 class Game:
     def __init__(self):
@@ -129,12 +160,6 @@ class Game:
         self.curr_color = "white"
         self.players = []
         self.board = None
-
-    def add_player(self, name, color):
-        self.players.append(Player(name, color))
-
-    def create_board(self, board_type):
-        self.board = Board(board_type)
 
     def find_player(self):
         player = None
@@ -157,10 +182,77 @@ class Game:
             else: self.curr_color = "white"
             if res == 2:
                 player.increase_points()
-                return "Success. +1 point!"
-            return "Success"
-        return "Wrong move. Try again"
+        return res
+
+    def move_loop(self, stamp):
+        mv = None
+        while (True):
+            mv = input("Enter the position of a checker and where you want to move it (template – 'row1 column1 row2 column2'): ").split()
+            if len(mv) == 4 and mv[0].isdecimal() and mv[1].isdecimal() and mv[2].isdecimal() and mv[3].isdecimal():
+                r1, c1, r2, c2 = map(int, mv)
+                res = self.move(r1, c1, r2, c2, time.time()-stamp)
+                if res == 2:
+                    print("Success. +1 point!")
+                    break
+                elif res == 1:
+                    print("Success.")
+                    break
+                print("Wrong move. Try again.")
+            else: print("Try again.")
+
+    def finalizing(self):
+        self.board.finish()
+        print(f"Total game time: {self.total_time:.1f}\nTotal moves performed: {self.total_moves}")
+        nm1 = self.players[0].get_name()
+        print(f"Information for {nm1}:")
+        self.players[0].print_data()
+        nm2 = self.players[1].get_name()
+        print(f"Information for {nm2}:")
+        self.players[1].print_data()
+        print("VERDICT:")
+        p1,t1 = self.players[0].get_pNt()
+        p2,t2 = self.players[1].get_pNt()
+        print(f"{nm1} {self.players[0].define_result(p2,t2)}!")
+        print(f"{nm2} {self.players[1].define_result(p1,t1)}!")                
+
+    def game_loop(self):
+        while(True):
+            stamp = time.time()
+            plr = self.find_player()
+            print(f"{plr.get_name()}'s turn.")
+            plr.print_data()
+            inp = input("Do you want to stop the game? If yes – enter 's': ")
+            if inp == "s":
+                self.finalizing()
+                break
+            else:
+                self.board.show()
+            self.move_loop(stamp)
 
     def gaming(self):
-        while(True):
-            inp = input(f"{self.find_player().get_name()}'s turn: ")
+        print("\n\nWelcome to the Checkers! Please choose a size of a board.")
+        inp = None
+        while (True):
+            inp = input("Input 's' for a 8x8 small board or 'b' for a 12x12 big board: ").lower()
+            if (inp == "s") or (inp == "b"): break
+            else: print("Please try again.")
+        if inp == "s": self.board = Board("small")
+        else: self.board = Board("big")
+        plr1 = None
+        plr2 = None
+        while (True):
+            plr1 = input("Input a name and a color ('b' – black, 'w' – white) for a player #1 (template – 'name color'): ").split()
+            if len(plr1)==2 and plr1[1].lower() in ("w","b"): break
+            else: print("Please try again.")
+        while (True):
+            plr2 = input("Input a name for a player #2: ")
+            if plr2: break
+            else: print("Please try again.")
+        if plr1[1].lower() == "w":
+            self.players.append(Player(plr1[0], "white"))
+            self.players.append(Player(plr2, "black"))
+        else:
+            self.players.append(Player(plr1[0], "black"))
+            self.players.append(Player(plr2, "white"))
+        print(f"The game begins!\n\n")
+        self.game_loop()
