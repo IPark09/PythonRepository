@@ -71,6 +71,18 @@ class Board:
                         return 2  
         return 0
 
+    def has_moves(self, color):
+        step = -1 if color == "white" else 1
+        for chkr in self.checkers:
+            if chkr.get_color() != color:
+                continue
+            r, c = chkr.get_cords()
+            for d in (1, 2):
+                for dc in (-d, d):
+                    if self.check_move(r, c, r + step*d, c + dc, color, color) != 0:
+                        return True
+        return False
+
     def remove(self, r1, c1, r2, c2):
         chkr = self.find_checker(r1+(r2-r1)//2, c1+(c2-c1)//2)
         self.removed.append(chkr)
@@ -94,19 +106,19 @@ class Board:
         print(f"Game {self.status}!\nTotal checkers still present: {len(self.checkers)}\nTotal checkers eliminated: {len(self.removed)}")
 
     def show(self):
-        out = ""
+        w = len(str(self.size_col - 1)) + 1
         print("State of the board:")
-        out += "#"
-        for k in range(self.size_col): out += f"{k}"
+        out = " " * w
+        for k in range(self.size_col): out += f"{k:>{w}}"
         for i in range(self.size_row):
-            out += f"\n{i}"
+            out += f"\n{i:>{w}}"
             for j in range(self.size_col):
                 ch = self.find_checker(i, j)
                 if ch is not None:
-                    cr = ch.get_color()
-                    if cr == "white": out += "W"
-                    else: out += "B"
-                else: out += "–"
+                    if ch.get_color() == "white": sym = "W"
+                    else: sym = "B"
+                else: sym = "–"
+                out += f"{sym:>{w}}"
         print(out)
                 
 
@@ -202,7 +214,7 @@ class Game:
 
     def finalizing(self):
         self.board.finish()
-        print(f"Total game time: {self.total_time:.1f}\nTotal moves performed: {self.total_moves}")
+        print(f"Total game time: {self.total_time:.1f}s\nTotal moves performed: {self.total_moves}")
         nm1 = self.players[0].get_name()
         print(f"Information for {nm1}:")
         self.players[0].print_data()
@@ -219,9 +231,13 @@ class Game:
         while(True):
             stamp = time.time()
             plr = self.find_player()
+            if not self.board.has_moves(self.curr_color):
+                print(f"{plr.get_name()} has no moves left. Ending the session.")
+                self.finalizing()
+                break
             print(f"{plr.get_name()}'s turn.")
             plr.print_data()
-            inp = input("Do you want to stop the game? If yes – enter 's': ")
+            inp = input("Do you want to stop the game? If yes – enter 's': ").lower()
             if inp == "s":
                 self.finalizing()
                 break
